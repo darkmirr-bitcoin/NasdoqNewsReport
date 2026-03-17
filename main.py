@@ -28,7 +28,7 @@ prompt = f"""
 print("AI가 리포트를 작성 중이야...")
 # 최신 API 문법으로 리포트 생성
 response = client.models.generate_content(
-    model='gemini-1.5-flash',
+    model='gemini-2.0-flash',
     contents=prompt
 )
 
