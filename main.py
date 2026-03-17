@@ -17,9 +17,13 @@ for entry in feed.entries[:7]:
 # 2. Gemini API 최신 버전(google-genai) 적용
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
+# 기존 코드에서 프롬프트 위쪽에 날짜 변수를 먼저 만들어줘
+today_str = datetime.now().strftime("%Y년 %m월 %d일")
+
 prompt = f"""
-너는 미국 주식 전문 애널리스트야. 다음 뉴스 헤드라인과 요약을 분석해서 
-오늘의 미국 증시 데일리 리포트를 가독성 좋은 마크다운(.md) 포맷으로 작성해줘.
+너는 미국 주식 전문 애널리스트야. 오늘 기준 날짜는 {today_str}이야. 
+다음 뉴스 헤드라인과 요약을 분석해서 
+{today_str} 기준 미국 증시 데일리 리포트를 가독성 좋은 마크다운(.md) 포맷으로 작성해줘.
 결론 부분에는 개인 투자자를 위한 간단한 코멘트도 추가해 줘.
 
 {news_text}
