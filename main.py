@@ -64,7 +64,6 @@ if bot_token and chat_id:
     payload = {
         "chat_id": chat_id,
         "text": text_to_send,
-        "parse_mode": "Markdown" # 마크다운 서식을 적용해서 예쁘게 보여줌
     }
     
     res = requests.post(send_url, json=payload)
