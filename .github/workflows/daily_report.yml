@@ -12,16 +12,21 @@ jobs:
   run-daily-task:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: 저장소 코드 가져오기 (Checkout)
+ steps:
+      - name: 저장소 코드 가져오기
         uses: actions/checkout@v4
 
       - name: 파이썬 환경 세팅
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # 원하는 파이썬 버전
+          python-version: '3.11'
+          cache: 'pip' # 패키지 설치 속도를 빠르게 해줌
 
-      - name: 테스트 스크립트 실행
-        run: |
-          echo "GitHub Actions 서버가 정상적으로 켜졌어!"
-          echo "나중에 여기에 python main.py 같은 실행 명령어를 넣을 거야."
+      - name: 필요 라이브러리 설치
+        run: pip install -r requirements.txt
+
+      - name: 뉴스 크롤링 & AI 리포트 생성 실행
+        env:
+          # 아까 Secrets에 저장한 키를 파이썬 스크립트로 넘겨줌
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python main.py
