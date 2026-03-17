@@ -11,6 +11,10 @@ env:
 jobs:
   run-daily-task:
     runs-on: ubuntu-latest
+    
+    # 이 봇이 저장소에 파일을 쓸 수 있도록 권한 부여
+    permissions:
+      contents: write 
 
     steps:
       - name: 저장소 코드 가져오기
@@ -29,3 +33,13 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
+
+      # 👇 여기서부터 새로 추가된 부분이야! 👇
+      - name: 생성된 리포트를 GitHub에 저장 (Commit & Push)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/
+          # 변경사항이 있을 때만 커밋하도록 설정
+          git commit -m "Auto-generate daily stock report" || echo "No changes to commit"
+          git push
