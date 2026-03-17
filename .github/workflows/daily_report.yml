@@ -8,6 +8,9 @@ on:
     - cron: '0 21 * * *'
   workflow_dispatch: # 개발할 때 수동으로 버튼 눌러서 테스트해 볼 수 있게 해주는 아주 유용한 옵션!
 
+env: # 👈 여기에 추가! (워크플로우 전체에 적용되는 설정이야)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   run-daily-task:
     runs-on: ubuntu-latest
