@@ -1,0 +1,27 @@
+name: Daily Stock Report Bot
+
+on:
+  schedule:
+    # UTC 시간 기준이야. 한국 시간(KST)보다 9시간 느려.
+    # 한국 아침 6시에 돌리고 싶으면 전날 밤 9시(21시)로 설정해야 해.
+    # 분 시간 일 월 요일
+    - cron: '0 21 * * *'
+  workflow_dispatch: # 개발할 때 수동으로 버튼 눌러서 테스트해 볼 수 있게 해주는 아주 유용한 옵션!
+
+jobs:
+  run-daily-task:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 저장소 코드 가져오기 (Checkout)
+        uses: actions/checkout@v4
+
+      - name: 파이썬 환경 세팅
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # 원하는 파이썬 버전
+
+      - name: 테스트 스크립트 실행
+        run: |
+          echo "GitHub Actions 서버가 정상적으로 켜졌어!"
+          echo "나중에 여기에 python main.py 같은 실행 명령어를 넣을 거야."
