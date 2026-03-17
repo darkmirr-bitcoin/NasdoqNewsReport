@@ -15,6 +15,32 @@ for entry in feed.entries[:100]:
     summary = entry.get('summary', entry.get('description', '요약 없음'))
     news_text += f"- {entry.title}\n  {summary}\n\n"
 
+# 1.5. 미국 10년물 국채 금리 데이터 가져오기 (새로 추가 🚀)
+print("국채 금리 데이터 가져오는 중...")
+try:
+    # ^TNX 는 미국 10년물 국채 금리의 티커야
+    tnx = yf.Ticker("^TNX")
+    # 최근 2일치 데이터를 가져와서 어제와 오늘 비교
+    hist = tnx.history(period="2d")
+    
+    if len(hist) >= 2:
+        prev_close = hist['Close'].iloc[0] # 어제 종가
+        current_yield = hist['Close'].iloc[1] # 오늘(현재) 금리
+        change = current_yield - prev_close
+        
+        # 변동 폭에 따라 +, - 기호 붙이기
+        sign = "+" if change > 0 else ""
+        yield_text = f"미국 10년물 국채 금리: {current_yield:.3f}% (전일 대비 {sign}{change:.3f}%p)"
+    else:
+        # 주말이나 휴장일이라 데이터가 1개만 나올 경우
+        current_yield = hist['Close'].iloc[0]
+        yield_text = f"미국 10년물 국채 금리: {current_yield:.3f}% (전일 대비 변동폭 계산 불가 - 휴장 등)"
+        
+    print(f"✅ 금리 확인: {yield_text}")
+except Exception as e:
+    print(f"❌ 금리 데이터 가져오기 실패: {e}")
+    yield_text = "국채 금리 데이터를 불러오지 못했습니다."
+
 # 2. 구글 시트 'Today' 탭 데이터 읽어오기
 google_sheets_creds_json = os.environ.get("GOOGLE_SHEETS_CREDS")
 sheet_data_text = "구글 시트 'Today' 탭의 나스닥 15개 종목 AI 분석 및 시장 지표 데이터:\n"
