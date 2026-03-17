@@ -32,6 +32,8 @@ jobs:
       - name: 뉴스 크롤링 및 AI 리포트 생성 실행
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
 
       # 👇 여기서부터 새로 추가된 부분이야! 👇
