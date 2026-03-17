@@ -3,6 +3,7 @@ import os
 import requests
 import gspread
 import json
+import yfinance as yf
 from datetime import datetime, timedelta
 from google import genai
 
