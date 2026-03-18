@@ -274,7 +274,8 @@ if bot_token and chat_id:
     # 🚨 여기에 네 깃허브 Pages 주소를 적어줘! (마지막에 슬래시(/) 없이 적기)
     # 예시: "https://myid.github.io/my-repo"
     github_pages_url = "darkmirr-bitcoin.github.io/NasdoqNewsReport"
-    report_web_link = f"{github_pages_url}/reports/{us_date_check}-report"
+    # 깃허브 Pages는 .md 파일을 .html로 자동 변환해서 스킨을 씌워줌!
+    report_web_link = f"{github_pages_url}/reports/{us_date_check}-report.html"
     
     # 텔레그램 메시지 하단에 웹 링크 추가
     text_to_send = f"🔔 {us_date_str} 미국 증시 요약\n\n{telegram_msg}\n\n👉 [상세 리포트 웹에서 보기]\n{report_web_link}" 
