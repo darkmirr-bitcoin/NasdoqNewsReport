@@ -73,7 +73,7 @@ if __name__ == "__main__":
             sheet_data_text += f"- AI 의견: {analysis.get('opinion', '-')}\n"
             
             # 🚨 할당량 초과(429 에러) 방지를 위해 4초 대기
-            time.sleep(4)
+            time.sleep(6)
     else:
         sheet_data_text += "시트에 데이터가 없습니다."
 
