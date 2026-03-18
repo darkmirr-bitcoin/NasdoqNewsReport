@@ -273,7 +273,7 @@ if bot_token and chat_id:
     
     # 🚨 여기에 네 깃허브 Pages 주소를 적어줘! (마지막에 슬래시(/) 없이 적기)
     # 예시: "https://myid.github.io/my-repo"
-    github_pages_url = "https://[네아이디].github.io/[저장소이름]"
+    github_pages_url = "darkmirr-bitcoin.github.io/NasdoqNewsReport"
     report_web_link = f"{github_pages_url}/reports/{us_date_check}-report"
     
     # 텔레그램 메시지 하단에 웹 링크 추가
