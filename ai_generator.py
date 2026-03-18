@@ -1,9 +1,10 @@
 import os
 import json
+import time # 👈 재시도 대기를 위해 추가
 from google import genai
 
-def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_trend, macd_hist, ema5, bb_upper, bb_lower, news):
-    """제미니 API를 호출하여 기술적 지표와 뉴스를 종합 분석합니다."""
+def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_trend, macd_hist, ema5, bb_upper, bb_lower, news, max_retries=3):
+    """제미니 API를 호출하여 기술적 지표와 뉴스를 종합 분석합니다. (429 에러 시 자동 재시도)"""
     prompt = f"""
     당신은 월스트리트의 최고 주식 분석가입니다.
     다음 {ticker} 주식의 기술적 지표와 최신 뉴스를 바탕으로 투자 매력도(0~100점)와 분석 의견을 JSON 형태로 정확히 반환하세요.
@@ -29,23 +30,33 @@ def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_tr
     }}
     """
 
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
-        )
-        
-        # 찌꺼기 텍스트(마크다운 백틱) 제거 방어 로직
-        raw_text = response.text.replace("```json", "").replace("```", "").strip()
-        result = json.loads(raw_text)
-        return result
-        
-    except json.JSONDecodeError:
-        print(f"❌ JSON 파싱 에러 ({ticker}): 제미니가 형식을 어겼습니다.")
-        return {"score": 0, "newsScore": 0, "opinion": "AI 분석 형식 오류", "keywords": "-"}
-    except Exception as e:
-        print(f"❌ API 호출 에러 ({ticker}): {e}")
-        return {"score": 0, "newsScore": 0, "opinion": "AI 연동 실패", "keywords": "-"}
+    # max_retries(기본 3번)만큼 반복해서 시도함
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=prompt
+            )
+            
+            raw_text = response.text.replace("```json", "").replace("```", "").strip()
+            result = json.loads(raw_text)
+            return result
+            
+        except json.JSONDecodeError:
+            print(f"❌ JSON 파싱 에러 ({ticker}): 제미니가 형식을 어겼습니다.")
+            return {"score": 0, "newsScore": 0, "opinion": "AI 분석 형식 오류", "keywords": "-"}
+            
+        except Exception as e:
+            # 에러 메시지에 '429'가 포함되어 있고, 아직 재시도 기회가 남아있다면
+            if "429" in str(e) and attempt < max_retries - 1:
+                wait_time = 10 * (attempt + 1) # 처음엔 10초, 두 번째엔 20초 대기
+                print(f"⚠️ 429 에러 발생 ({ticker}) - {wait_time}초 후 재시도 (현재 {attempt+1}/{max_retries}회)")
+                time.sleep(wait_time)
+                continue # 다시 for문 처음으로 돌아가서 재시도
+            else:
+                # 429 에러가 아니거나, 3번 다 실패했을 경우
+                print(f"❌ API 호출 에러 ({ticker}): {e}")
+                return {"score": 0, "newsScore": 0, "opinion": "AI 연동 실패", "keywords": "-"}
 
 # 파라미터에 indices_text 추가
 def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text):
