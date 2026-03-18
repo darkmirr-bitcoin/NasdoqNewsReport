@@ -1,52 +1,86 @@
 import sys
 import os
 import requests
+import time # 👈 API 호출 제한 방어를 위한 sleep
 import pandas_market_calendars as mcal
 from datetime import datetime, timedelta
+from google import genai # 👈 client 객체 생성을 위해 추가
 
-# 새로 추가된 get_market_indices 함수를 임포트 목록에 추가
-from macro_data import get_news, get_treasury_yields, get_fear_and_greed, get_market_indices
-from sheet_data import get_google_sheet_data
-from ai_generator import generate_reports
+# 모듈 불러오기 (함수 이름 바뀐 것들 적용)
+from macro_data import get_news, get_treasury_yields, get_fear_and_greed, get_market_indices, get_stock_news
+from sheet_data import get_google_sheet_records
+from ai_generator import generate_reports, get_gemini_scoring_analysis
 from file_manager import save_and_update_index
 from telegram_sender import send_alert
 
 def check_holiday(us_date_check, us_date_str):
+    # (기존 휴장일 체크 로직 동일하므로 생략하지 말고 그대로 유지)
     nyse = mcal.get_calendar('NYSE')
     valid_days = nyse.valid_days(start_date=us_date_check, end_date=us_date_check)
-
     if len(valid_days) == 0:
-        print(f"🛑 {us_date_check}은(는) 미국 증시 휴장일(주말 또는 공휴일)입니다.")
-        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-        chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-        if bot_token and chat_id:
-            send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-            requests.post(send_url, json={
-                "chat_id": chat_id,
-                "text": f"😴 {us_date_str}은 미국 증시 휴장일입니다. 리포트를 생성하지 않습니다."
-            })
+        print(f"🛑 {us_date_check}은(는) 미국 증시 휴장일입니다.")
         sys.exit()
 
 if __name__ == "__main__":
     us_date_obj = datetime.now() - timedelta(hours=14)
     us_date_str = us_date_obj.strftime("%Y년 %m월 %d일")
     us_date_check = us_date_obj.strftime("%Y-%m-%d")
-    print(f"기준 날짜(미국): {us_date_check}")
     
     check_holiday(us_date_check, us_date_str)
     print("✅ 개장일 확인 완료! 리포트 생성을 시작합니다.")
 
-    # 1. 거시경제 및 구글 시트 데이터 수집
+    # 1. 글로벌 거시경제 데이터 수집
     news_text = get_news(limit=80)
     yield_text = get_treasury_yields()
     fng_text = get_fear_and_greed()
-    indices_text = get_market_indices() # 👈 새로운 시장 지수 변수 추가
-    sheet_data_text = get_google_sheet_data()
+    indices_text = get_market_indices()
 
-    # 2. AI 리포트 생성 (indices_text 추가로 넘김)
+    # 2. 구글 시트 데이터 가져오기
+    records = get_google_sheet_records()
+    
+    # 3. 개별 종목 뉴스 수집 및 AI 채점 진행
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    sheet_data_text = "관심 종목 AI 개별 분석 데이터:\n"
+    
+    if records:
+        print("🔍 개별 종목 뉴스 수집 및 AI 분석 시작 (시간이 다소 소요됩니다)...")
+        for row in records:
+            ticker = str(row.get("티커", row.get("Ticker", row.get("종목명", "")))).strip()
+            if not ticker: continue
+            
+            price = row.get("현재가", "N/A")
+            rsi = row.get("RSI", "N/A")
+            volume_ratio = row.get("거래량강도", "N/A")
+            obv_trend = row.get("OBV추세", "N/A")
+            macd_hist = row.get("MACD히스토그램", "N/A")
+            ema5 = row.get("EMA5", "N/A")
+            bb_upper = row.get("볼린저상단", "N/A")
+            bb_lower = row.get("볼린저하단", "N/A")
+
+            print(f"[{ticker}] 뉴스 수집 및 AI 분석 중...")
+            
+            # 모듈에서 함수 불러와서 실행
+            news = get_stock_news(ticker, limit=3)
+            analysis = get_gemini_scoring_analysis(
+                client, ticker, price, rsi, volume_ratio, obv_trend, macd_hist, ema5, bb_upper, bb_lower, news
+            )
+            
+            # 텍스트 조립
+            sheet_data_text += f"\n[종목: {ticker}]\n"
+            sheet_data_text += f"- 기술지표: 현재가 {price} / RSI {rsi} / MACD {macd_hist}\n"
+            sheet_data_text += f"- AI 점수: {analysis.get('score', 0)}점 (뉴스 점수: {analysis.get('newsScore', 0)}점)\n"
+            sheet_data_text += f"- 핵심 키워드: {analysis.get('keywords', '-')}\n"
+            sheet_data_text += f"- AI 의견: {analysis.get('opinion', '-')}\n"
+            
+            # 🚨 할당량 초과(429 에러) 방지를 위해 4초 대기
+            time.sleep(4)
+    else:
+        sheet_data_text += "시트에 데이터가 없습니다."
+
+    # 4. 종합 AI 리포트 생성
     md_report, telegram_msg = generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text)
 
-    # 3. 파일 저장 및 텔레그램 발송
+    # 5. 파일 저장 및 텔레그램 발송
     save_and_update_index(us_date_check, us_date_str, md_report)
     send_alert(us_date_str, us_date_check, telegram_msg)
     
