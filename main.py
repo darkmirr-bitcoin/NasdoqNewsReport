@@ -42,7 +42,7 @@ rss_url = "https://finance.yahoo.com/news/rssindex"
 feed = feedparser.parse(rss_url)
 
 news_text = "오늘의 주요 뉴스:\n"
-for entry in feed.entries[:100]:
+for entry in feed.entries[:80]:
     summary = entry.get('summary', entry.get('description', '요약 없음'))
     news_text += f"- {entry.title}\n  {summary}\n\n"
 
