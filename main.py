@@ -230,16 +230,40 @@ else:
     telegram_msg = "🔔 모바일 요약본 분리 실패 (아래 원본을 확인하세요)\n\n" + full_text[:3800]
 
 # =====================================================================
-# 5. 마크다운 파일 저장 및 텔레그램 전송
+# 5. 마크다운 파일 저장 및 웹사이트 인덱스(index.md) 업데이트
 # =====================================================================
 os.makedirs("reports", exist_ok=True)
 file_path = f"reports/{us_date_check}-report.md"
 
-# 깃허브에는 상세 버전(md_report)만 저장!
+# 깃허브에는 상세 버전(md_report) 저장
 with open(file_path, "w", encoding="utf-8") as f:
     f.write(md_report)
 print(f"완료! {file_path} 상세 리포트 파일 생성됨.")
 
+# 🚀 웹사이트 메인 화면(index.md)에 새 리포트 링크 자동 추가
+index_path = "index.md"
+# GitHub Pages에서는 .md 확장자를 빼고 경로를 적어야 페이지 이동이 깔끔해
+link_text = f"- [{us_date_str} 상세 리포트 보기](reports/{us_date_check}-report)\n"
+
+if os.path.exists(index_path):
+    with open(index_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+else:
+    # index.md 파일이 없으면 새로 만듦
+    lines = ["# 📈 나의 미국 증시 데일리 리포트 모아보기\n\n"]
+
+# 최신 리포트가 맨 위에 오도록 3번째 줄에 링크 삽입
+if len(lines) >= 2:
+    lines.insert(2, link_text)
+else:
+    lines.append(link_text)
+
+with open(index_path, "w", encoding="utf-8") as f:
+    f.writelines(lines)
+
+# =====================================================================
+# 6. 텔레그램 전송 (웹사이트 직접 연결 링크 포함)
+# =====================================================================
 bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
 chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 
@@ -247,12 +271,17 @@ if bot_token and chat_id:
     print("텔레그램으로 모바일 요약본 전송 시작...")
     send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
-    # 텔레그램에는 모바일 전용 요약본(telegram_msg)만 전송!
-    text_to_send = f"🔔 {us_date_str} 미국 증시 요약\n\n{telegram_msg}" 
+    # 🚨 여기에 네 깃허브 Pages 주소를 적어줘! (마지막에 슬래시(/) 없이 적기)
+    # 예시: "https://myid.github.io/my-repo"
+    github_pages_url = "https://[네아이디].github.io/[저장소이름]"
+    report_web_link = f"{github_pages_url}/reports/{us_date_check}-report"
+    
+    # 텔레그램 메시지 하단에 웹 링크 추가
+    text_to_send = f"🔔 {us_date_str} 미국 증시 요약\n\n{telegram_msg}\n\n👉 [상세 리포트 웹에서 보기]\n{report_web_link}" 
     
     payload = {
         "chat_id": chat_id,
-        "text": text_to_send[:4000] # 혹시 길어질까 봐 4000자로 안전하게 자름
+        "text": text_to_send[:4000]
     }
     
     res = requests.post(send_url, json=payload)
