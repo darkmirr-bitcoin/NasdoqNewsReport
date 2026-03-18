@@ -2,6 +2,33 @@ import feedparser
 import requests
 import yfinance as yf
 
+def get_stock_news(ticker, limit=3):
+    """
+    yfinance를 활용해 해당 종목의 최신 영문 뉴스를 가져옵니다.
+    """
+    try:
+        # yfinance 티커 객체 생성 (예: NASDAQ:AAPL 이면 AAPL 만 추출)
+        short_ticker = ticker.split(":")[1] if ":" in ticker else ticker
+        stock = yf.Ticker(short_ticker)
+        news_list = stock.news
+        
+        if not news_list:
+            return "최신 뉴스가 없습니다."
+
+        news_texts = []
+        for article in news_list[:limit]:
+            title = article.get('title', '')
+            publisher = article.get('publisher', '')
+            # 파이썬 제미니가 알아서 번역하고 분석하므로 영문 그대로 줘도 됨
+            news_texts.append(f"[{publisher}] {title}")
+            
+        return "\n".join(news_texts)
+    
+    except Exception as e:
+        print(f"❌ 뉴스 수집 에러 ({ticker}): {e}")
+        return "뉴스 데이터를 가져오는 중 에러가 발생했습니다."
+
+
 def get_news(limit=80):
     """야후 파이낸스 RSS에서 최신 글로벌 뉴스를 가져오는 함수"""
     print("글로벌 뉴스 데이터 가져오는 중...")
