@@ -2,6 +2,33 @@ import os
 import json
 import gspread
 
+def get_google_sheet_records():
+    """구글 시트에서 나스닥 종목 데이터를 읽어와서 딕셔너리 리스트로 반환합니다."""
+    google_sheets_creds_json = os.environ.get("GOOGLE_SHEETS_CREDS")
+    
+    if not google_sheets_creds_json:
+        print("❌ 구글 시트 크레덴셜 미설정")
+        return []
+
+    try:
+        print("구글 시트 데이터 읽는 중...")
+        creds = json.loads(google_sheets_creds_json)
+        gc = gspread.service_account_from_dict(creds)
+        
+        # 새로운 시트 ID 적용
+        spreadsheet_id = "16y0RW-UtAdE8nmMWXbOeEMhhfkMvC5HCJcCr9Yo8208"
+        sh = gc.open_by_key(spreadsheet_id)
+        
+        worksheet = sh.get_worksheet(0)
+        records = worksheet.get_all_records()
+        
+        print(f"✅ 구글 시트 데이터({len(records)}개 종목) 읽기 성공!")
+        return records
+        
+    except Exception as e:
+        print(f"❌ 구글 시트 데이터 읽기 실패: {e}")
+        return []
+
 def get_google_sheet_data():
     """개인 구글 시트의 'Today' 탭에서 나스닥 종목 AI 분석 데이터를 읽어오는 함수"""
     # GitHub Secrets에 등록해 둔 구글 서비스 계정 인증키를 가져옴
