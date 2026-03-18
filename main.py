@@ -85,6 +85,47 @@ except Exception as e:
     yield_text = f"국채 금리 데이터를 불러오지 못했습니다. ({e})"
 
 # =====================================================================
+# 2.5. CNN 공포탐욕 지수 가져오기 (새로 추가!) 🚀
+# =====================================================================
+print("공포탐욕 지수 데이터 가져오는 중...")
+fng_text = ""
+try:
+    url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
+    # CNN 서버가 봇(코드) 접근을 막는 걸 방지하기 위해 브라우저인 척 위장
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    }
+    res = requests.get(url, headers=headers, timeout=10)
+    
+    if res.status_code == 200:
+        data = res.json()
+        score = round(data['fear_and_greed']['score']) # 오늘 점수
+        rating = data['fear_and_greed']['rating'] # 상태 (greed, fear 등)
+        prev_close = round(data['fear_and_greed']['previous_close']) # 어제 종가 기준 점수
+        
+        # 전일 대비 변화량 계산
+        change = score - prev_close
+        sign = "+" if change > 0 else ""
+        
+        # 상태값을 예쁜 한글로 변환
+        rating_ko = {
+            "extreme fear": "극도의 공포 😱",
+            "fear": "공포 😨",
+            "neutral": "중립 😐",
+            "greed": "탐욕 😎",
+            "extreme greed": "극도의 탐욕 🤑"
+        }.get(rating.lower(), rating)
+        
+        fng_text = f"- CNN 공포탐욕 지수: {score}점 ({rating_ko}) / 전일 대비 {sign}{change}점"
+        print(f"✅ 공포탐욕 확인 완료: {fng_text}")
+    else:
+        fng_text = "- 공포탐욕 지수: 데이터를 불러올 수 없습니다."
+        print("❌ 공포탐욕 지수 API 응답 오류")
+except Exception as e:
+    print(f"❌ 공포탐욕 지수 가져오기 실패: {e}")
+    fng_text = "- 공포탐욕 지수: 오류 발생"
+
+# =====================================================================
 # 3. 구글 시트 'Today' 탭 데이터 읽어오기
 # =====================================================================
 google_sheets_creds_json = os.environ.get("GOOGLE_SHEETS_CREDS")
@@ -131,8 +172,9 @@ prompt = f"""
 [데이터 2: 나스닥 15개 종목 AI 분석 (구글 시트)]
 {sheet_data_text}
 
-[데이터 3: 오늘의 거시 경제 지표 (국채 금리)]
+[데이터 3: 오늘의 거시 경제 지표 (국채 금리 및 공포탐욕 지수)]
 {yield_text}
+{fng_text} 
 
 [핵심 작성 조건]
 1. 시장 심리(공포탐욕 지수)와 장단기 국채 금리 변동 코멘트
