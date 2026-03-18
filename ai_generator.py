@@ -1,5 +1,51 @@
 import os
+import json
 from google import genai
+
+def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_trend, macd_hist, ema5, bb_upper, bb_lower, news):
+    """제미니 API를 호출하여 기술적 지표와 뉴스를 종합 분석합니다."""
+    prompt = f"""
+    당신은 월스트리트의 최고 주식 분석가입니다.
+    다음 {ticker} 주식의 기술적 지표와 최신 뉴스를 바탕으로 투자 매력도(0~100점)와 분석 의견을 JSON 형태로 정확히 반환하세요.
+
+    [기술적 지표]
+    - 현재가: {price}
+    - RSI: {rsi}
+    - 거래량강도: {volume_ratio}%
+    - OBV추세: {obv_trend}
+    - MACD히스토그램: {macd_hist}
+    - EMA5: {ema5}
+    - 볼린저밴드: 상단 {bb_upper}, 하단 {bb_lower}
+
+    [최신 뉴스]
+    {news}
+
+    [출력 형식 (오직 JSON만 출력할 것, 마크다운 코드 블록 절대 금지)]
+    {{
+        "score": 85,
+        "newsScore": 80,
+        "opinion": "AI 수요 증가와 함께 견조한 상승세 유지 중. RSI가 다소 높으나 MACD 및 OBV 추세가 긍정적임. (한국어로 작성)",
+        "keywords": "AI 칩, 데이터센터, 실적 호조 (한국어로 작성)"
+    }}
+    """
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt
+        )
+        
+        # 찌꺼기 텍스트(마크다운 백틱) 제거 방어 로직
+        raw_text = response.text.replace("```json", "").replace("```", "").strip()
+        result = json.loads(raw_text)
+        return result
+        
+    except json.JSONDecodeError:
+        print(f"❌ JSON 파싱 에러 ({ticker}): 제미니가 형식을 어겼습니다.")
+        return {"score": 0, "newsScore": 0, "opinion": "AI 분석 형식 오류", "keywords": "-"}
+    except Exception as e:
+        print(f"❌ API 호출 에러 ({ticker}): {e}")
+        return {"score": 0, "newsScore": 0, "opinion": "AI 연동 실패", "keywords": "-"}
 
 # 파라미터에 indices_text 추가
 def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text):
