@@ -40,10 +40,14 @@ if __name__ == "__main__":
     
     # 3. 개별 종목 뉴스 수집 및 AI 채점 진행
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    sheet_data_text = "관심 종목 AI 개별 분석 데이터:\n"
+    sheet_data_text = "관심 종목 AI 개별 분석 데이터 (이미 점수 높은 순으로 정렬됨):\n"
     
     if records:
         print("🔍 개별 종목 뉴스 수집 및 AI 분석 시작 (시간이 다소 소요됩니다)...")
+        
+        # 💡 결과를 임시로 담아둘 리스트 생성
+        analyzed_results = []
+        
         for row in records:
             ticker = str(row.get("티커", row.get("Ticker", row.get("종목명", "")))).strip()
             if not ticker: continue
@@ -59,24 +63,46 @@ if __name__ == "__main__":
 
             print(f"[{ticker}] 뉴스 수집 및 AI 분석 중...")
             
-            # 모듈에서 함수 불러와서 실행
             news = get_stock_news(ticker, limit=3)
             analysis = get_gemini_scoring_analysis(
                 client, ticker, price, rsi, volume_ratio, obv_trend, macd_hist, ema5, bb_upper, bb_lower, news
             )
             
-            # 텍스트 조립
-            sheet_data_text += f"\n[종목: {ticker}]\n"
-            sheet_data_text += f"- 기술지표: 현재가 {price} / RSI {rsi} / MACD {macd_hist}\n"
-            sheet_data_text += f"- AI 점수: {analysis.get('score', 0)}점 (뉴스 점수: {analysis.get('newsScore', 0)}점)\n"
-            sheet_data_text += f"- 핵심 키워드: {analysis.get('keywords', '-')}\n"
-            sheet_data_text += f"- AI 의견: {analysis.get('opinion', '-')}\n"
+            # 💡 에러 방지를 위해 점수를 확실한 숫자로 변환
+            try:
+                ai_score = int(analysis.get('score', 0))
+                news_score = int(analysis.get('newsScore', 0))
+            except:
+                ai_score = 0
+                news_score = 0
+                
+            # 분석 결과를 딕셔너리 형태로 리스트에 저장
+            analyzed_results.append({
+                "ticker": ticker,
+                "price": price,
+                "rsi": rsi,
+                "macd_hist": macd_hist,
+                "score": ai_score,
+                "newsScore": news_score,
+                "keywords": analysis.get('keywords', '-'),
+                "opinion": analysis.get('opinion', '-')
+            })
             
-            # 🚨 할당량 초과(429 에러) 방지를 위해 4초 대기
             time.sleep(6)
+            
+        # 🚨 파이썬에서 AI 점수(score)를 기준으로 강력하게 내림차순 정렬!
+        analyzed_results.sort(key=lambda x: x["score"], reverse=True)
+        
+        # 정렬된 순서대로 텍스트를 조립해서 AI에게 넘겨줌
+        for res in analyzed_results:
+            sheet_data_text += f"\n[종목: {res['ticker']}]\n"
+            sheet_data_text += f"- 기술지표: 현재가 {res['price']} / RSI {res['rsi']} / MACD {res['macd_hist']}\n"
+            sheet_data_text += f"- AI 점수: {res['score']}점 (뉴스 점수: {res['newsScore']}점)\n"
+            sheet_data_text += f"- 핵심 키워드: {res['keywords']}\n"
+            sheet_data_text += f"- AI 의견: {res['opinion']}\n"
+            
     else:
         sheet_data_text += "시트에 데이터가 없습니다."
-
     # 4. 종합 AI 리포트 생성
     md_report, telegram_msg = generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text)
 
