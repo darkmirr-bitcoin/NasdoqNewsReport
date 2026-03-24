@@ -103,8 +103,8 @@ if __name__ == "__main__":
             
     else:
         sheet_data_text += "시트에 데이터가 없습니다."
-    # 4. 종합 AI 리포트 생성
-    md_report, telegram_msg = generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text)
+   # 4. 종합 AI 리포트 생성 (us_date_str 추가!)
+    md_report, telegram_msg = generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text, us_date_str)
 
     # 5. 파일 저장 및 텔레그램 발송
     save_and_update_index(us_date_check, us_date_str, md_report)
