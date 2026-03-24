@@ -58,8 +58,8 @@ def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_tr
                 print(f"❌ API 호출 에러 ({ticker}): {e}")
                 return {"score": 0, "newsScore": 0, "opinion": "AI 연동 실패", "keywords": "-"}
 
-# 파라미터에 indices_text 추가
-def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text):
+# 👇 1. 함수 괄호 맨 끝에 us_date_str 추가!
+def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text, us_date_str):
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
     prompt = f"""
@@ -81,14 +81,15 @@ def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_t
     [핵심 작성 조건]
     1. 주요 시장 지수의 변화와 VIX, 공포탐욕 지수, 특히 10년물/30년물 국채 금리 변동을 종합하여 현재 시장 상황을 분석해.
     2. 개별 종목은 AI 점수 75점 이상만 선별해서 표로 만들 것. (데이터 2가 이미 1등부터 정렬되어 있으니 그 순서대로 출력할 것)
-    3. 표(Table)를 만들 때 **반드시 '종목명(Company Name)'과 '티커(Ticker)' 열(Column)을 분리**해. (예: 티커가 'AAPL'이면 종목명은 '애플', 티커는 'AAPL'로 표기)
+    3. 표(Table)를 만들 때 반드시 '종목명(Company Name)'과 '티커(Ticker)' 열(Column)을 분리해.
     4. 뉴스를 활용해 반도체, 빅테크, 거시경제, 암호화폐, 지정학적 리스크 등 주요 이슈를 심층 분석
     5. 팩트 기반 (수치 지어내기 절대 금지)
 
     =========================================
     [출력 양식] - 아래 구조를 복사해서 각 항목의 내용을 아주 풍부하게 채워 넣어!
 
-    # 📈 오늘의 미국 증시 상세 분석 리포트
+    # 👇 2. 제목 옆에 날짜 변수 추가!
+    # 📈 오늘의 미국 증시 상세 분석 리포트 ({us_date_str})
     
     ## 1. 시장 지수 및 거시 경제 분석
     (이곳에 3대 지수, VIX, 공포탐욕 지수, 국채 금리 데이터를 하나의 깔끔한 표(Table)로 정리해)
@@ -97,7 +98,7 @@ def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_t
     (표 바로 아래에 줄글로 3대 지수 흐름, 공포탐욕 지수 상태, 그리고 장단기 국채 금리 변동이 증시에 미치는 영향과 의미를 반드시 상세하게 설명해 줘!)
 
     ## 2. 주요 종목 하이라이트 (AI 점수 75점 이상)
-    (이곳에 점수가 높은 순서대로 표를 작성해 줘. 표의 열은 반드시 **[종목명 | 티커 | AI 점수 | 뉴스 점수 | 추세 상태 | 핵심 요약]** 으로 명확히 6칸으로 분리해서 그려줘.)
+    (이곳에 점수가 높은 순서대로 표를 작성해 줘. 표의 열은 반드시 [종목명 | 티커 | AI 점수 | 뉴스 점수 | 추세 상태 | 핵심 요약] 으로 명확히 6칸으로 분리해서 그려줘.)
 
     ## 3. 핵심 테마 및 뉴스 분석
     (이곳에 데이터 1의 뉴스들을 활용해서 반도체, 빅테크, 암호화폐, 지정학적 리스크 등 주요 테마를 마크다운 리스트 형태로 깊이 있게 분석해)
@@ -118,7 +119,7 @@ def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_t
     response = client.models.generate_content(
         model='gemini-2.0-flash',
         contents=prompt
-    )
+    ))
 
     full_text = response.text.strip()
 
