@@ -119,7 +119,7 @@ def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_t
     response = client.models.generate_content(
         model='gemini-2.0-flash',
         contents=prompt
-    ))
+    )
 
     full_text = response.text.strip()
 
