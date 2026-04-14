@@ -21,13 +21,15 @@ def check_holiday(us_date_check, us_date_str):
         print(f"🛑 {us_date_check}은(는) 미국 증시 휴장일입니다.")
         sys.exit()
 
-if __name__ == "__main__":
-    us_date_obj = datetime.now() - timedelta(hours=14)
-    us_date_str = us_date_obj.strftime("%Y년 %m월 %d일")
-    us_date_check = us_date_obj.strftime("%Y-%m-%d")
+    if __name__ == "__main__":
+        # 날짜 설정
+        us_date_obj = datetime.now() - timedelta(hours=14)
+        us_date_str = us_date_obj.strftime("%Y년 %m월 %d일")
+        us_date_check = us_date_obj.strftime("%Y-%m-%d")
     
-    check_holiday(us_date_check, us_date_str)
-    print("✅ 개장일 확인 완료! 리포트 생성을 시작합니다.")
+        # 휴장일 체크
+        check_holiday(us_date_check, us_date_str)
+        print("✅ 개장일 확인 완료! 리포트 생성을 시작합니다.")
 
     # 1. 글로벌 거시경제 데이터 수집
     news_text = get_news(limit=80)
@@ -103,10 +105,17 @@ if __name__ == "__main__":
             
     else:
         sheet_data_text += "시트에 데이터가 없습니다."
-   # 4. 종합 AI 리포트 생성 (us_date_str 추가!)
-    md_report, telegram_msg = generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text, us_date_str)
+     # 🚨 종합 AI 리포트 생성 시 us_date_str를 반드시 전달!
+    md_report, telegram_msg = generate_reports(
+        news_text, 
+        sheet_data_text, 
+        yield_text, 
+        fng_text, 
+        indices_text, 
+        us_date_str  # <--- 이 부분이 누락되었는지 확인하세요!
+    )
 
-    # 5. 파일 저장 및 텔레그램 발송
+      # 파일 저장 및 전송
     save_and_update_index(us_date_check, us_date_str, md_report)
     send_alert(us_date_str, us_date_check, telegram_msg)
     
