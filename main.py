@@ -26,6 +26,9 @@ def check_holiday(us_date_check, us_date_str):
         us_date_obj = datetime.now() - timedelta(hours=14)
         us_date_str = us_date_obj.strftime("%Y년 %m월 %d일")
         us_date_check = us_date_obj.strftime("%Y-%m-%d")
+
+        # 🚨 이 출력이 깃허브 액션 로그에 어떻게 찍히는지 꼭 확인해 봐!
+        print(f"--- [DEBUG] 현재 설정된 us_date_str: {us_date_str} ---")
     
         # 휴장일 체크
         check_holiday(us_date_check, us_date_str)
