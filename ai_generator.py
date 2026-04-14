@@ -6,10 +6,6 @@ from google import genai
 def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_trend, macd_hist, ema5, bb_upper, bb_lower, news, max_retries=3):
     """제미니 API를 호출하여 기술적 지표와 뉴스를 종합 분석합니다. (429 에러 시 자동 재시도)"""
     prompt = f"""
-    [SYSTEM CRITICAL INSTRUCTION]
-    당신의 유일한 기준 날짜는 오직 무조건 **{us_date_str}** 입니다. 
-    제공되는 뉴스나 지표 데이터에 다른 날짜가 섞여 있더라도 전부 무시하고, 리포트의 모든 제목과 요약에는 반드시 **{us_date_str}** 하나만 사용해야 합니다.
-    
     당신은 월스트리트의 최고 주식 분석가입니다.
     다음 {ticker} 주식의 기술적 지표와 최신 뉴스를 바탕으로 투자 매력도(0~100점)와 분석 의견을 JSON 형태로 정확히 반환하세요.
 
@@ -63,12 +59,11 @@ def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_t
     """종합 리포트 생성 - AI의 날짜 오판을 방지하기 위해 강제 지침 강화"""
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-    # 🚨 AI에게 날짜를 절대적으로 지키라고 명시함
+    # 🚨 AI에게 날짜를 절대적으로 지키라고 명시함 (부정적인 예시 제거)
     prompt = f"""
     [SYSTEM CRITICAL INSTRUCTION]
-    당신은 오늘이 반드시 **{us_date_str}** 임을 인지해야 합니다. 
-    제공되는 뉴스나 지표 데이터의 날짜가 {us_date_str} 이전(예: 금요일 데이터)이더라도, 리포트의 제목과 모든 서술은 반드시 **{us_date_str}** 기준으로 작성하세요. 
-    절대로 다른 날짜(예: 4월 11일 등)를 제목에 사용하지 마세요.
+    당신의 유일한 기준 날짜는 오직 무조건 **{us_date_str}** 입니다. 
+    제공되는 뉴스나 지표 데이터에 다른 날짜가 섞여 있더라도 전부 무시하고, 리포트의 모든 제목과 요약에는 반드시 **{us_date_str}** 하나만 사용해야 합니다.
 
     [데이터 1: 수집 뉴스]
     {news_text}
