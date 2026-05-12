@@ -96,11 +96,12 @@ def get_fear_and_greed():
             rating = data['fear_and_greed']['rating']      
             prev_close = round(data['fear_and_greed']['previous_close']) 
             
+            # 전일 대비 변화량 및 변화율 계산
             change = score - prev_close
-            # 👈 변화율 계산 추가 (prev_close가 0일 경우 에러 방지)
             pct_change = (change / prev_close) * 100 if prev_close != 0 else 0 
             sign = "+" if change > 0 else ""
             
+            # API의 영문 상태 값을 직관적인 한글과 이모지로 매핑
             rating_ko = {
                 "extreme fear": "극도의 공포 😱",
                 "fear": "공포 😨",
@@ -109,15 +110,18 @@ def get_fear_and_greed():
                 "extreme greed": "극도의 탐욕 🤑"
             }.get(rating.lower(), rating) 
             
-            # 텍스트에 변화율(%) 추가
+            # 텍스트에 변화율(%) 포함하여 최종 조립
             fng_text = f"- CNN 공포탐욕 지수: {score}점 ({rating_ko}) / 전일 대비 {sign}{change}점 ({sign}{pct_change:.2f}%)"
             print(f"✅ 공포탐욕 확인 완료: {fng_text}")
+            
         else:
-            fng_text = "- 공포탐욕 지수: 데이터를 불러올 수 없습니다."
-            print("❌ 공포탐욕 지수 API 응답 오류")
+            fng_text = "- CNN 공포탐욕 지수: 데이터를 불러올 수 없습니다."
+            print(f"❌ 공포탐욕 지수 API 응답 오류 (상태 코드: {res.status_code})")
+            
     except Exception as e:
         print(f"❌ 공포탐욕 지수 가져오기 실패: {e}")
-        fng_text = "- 공포탐욕 지수: 오류 발생"
+        fng_text = "- CNN 공포탐욕 지수: 오류 발생"
+        
     return fng_text
 
 def get_market_indices():
