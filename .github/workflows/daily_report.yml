@@ -2,7 +2,7 @@ name: Daily Stock Report Bot
 
 on:
   schedule:
-    - cron: '3 23 * * *'
+    - cron: '43 21 * * *'
   workflow_dispatch:
 
 env:
