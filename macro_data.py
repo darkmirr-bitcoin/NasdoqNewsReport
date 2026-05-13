@@ -79,29 +79,30 @@ def get_treasury_yields():
         yield_text = f"국채 금리 데이터를 불러오지 못했습니다. ({e})"
     return yield_text
 
+import requests
+
 def get_fear_and_greed():
-    """CNN 실시간 공포탐욕 지수와 전일 대비 변화량 및 변화율(%)을 가져오는 함수"""
-    print("공포탐욕 지수 데이터 가져오는 중...")
-    fng_text = ""
+    """CNN 실시간 공포탐욕 지수, 풋/콜 비율, 하이일드 스프레드를 가져오는 함수"""
+    print("시장 심리(공포탐욕, 풋콜, 스프레드) 데이터 가져오는 중...")
+    fng_text_list = []
+    
     try:
         url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-        }
+        headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.get(url, headers=headers, timeout=10)
         
         if res.status_code == 200:
             data = res.json()
+            
+            # 1. 메인 공포탐욕 지수
             score = round(data['fear_and_greed']['score']) 
             rating = data['fear_and_greed']['rating']      
             prev_close = round(data['fear_and_greed']['previous_close']) 
             
-            # 전일 대비 변화량 및 변화율 계산
             change = score - prev_close
             pct_change = (change / prev_close) * 100 if prev_close != 0 else 0 
             sign = "+" if change > 0 else ""
             
-            # API의 영문 상태 값을 직관적인 한글과 이모지로 매핑
             rating_ko = {
                 "extreme fear": "극도의 공포 😱",
                 "fear": "공포 😨",
@@ -110,19 +111,49 @@ def get_fear_and_greed():
                 "extreme greed": "극도의 탐욕 🤑"
             }.get(rating.lower(), rating) 
             
-            # 텍스트에 변화율(%) 포함하여 최종 조립
-            fng_text = f"- CNN 공포탐욕 지수: {score}점 ({rating_ko}) / 전일 대비 {sign}{change}점 ({sign}{pct_change:.2f}%)"
-            print(f"✅ 공포탐욕 확인 완료: {fng_text}")
-            
+            fng_text_list.append(f"- CNN 공포탐욕 지수: {score}점 ({rating_ko}) / 전일 대비 {sign}{change}점")
+
+            # 2. 풋/콜 비율 (Put/Call Ratio)
+            try:
+                if 'put_call_options' in data and 'data' in data['put_call_options']:
+                    pc_data = data['put_call_options']['data']
+                    curr_pc = float(pc_data[-1]['y'])
+                    prev_pc = float(pc_data[-2]['y']) if len(pc_data) > 1 else curr_pc
+                    pc_change = curr_pc - prev_pc
+                    pc_sign = "+" if pc_change > 0 else ""
+                    
+                    # 1.0 이상이면 풋(하락) 베팅 우세, 0.8 이하면 콜(상승) 베팅 우세로 해석
+                    pc_status = "공포 (하락 베팅)" if curr_pc > 1.0 else "탐욕 (상승 베팅)" if curr_pc < 0.8 else "중립"
+                    fng_text_list.append(f"- 풋/콜 비율 (P/C Ratio): {curr_pc:.2f} [{pc_status}] / 전일 대비 {pc_sign}{pc_change:.2f}")
+            except Exception as e:
+                fng_text_list.append("- 풋/콜 비율: 데이터 파싱 오류")
+
+            # 3. 하이일드 스프레드 (Junk Bond Demand)
+            # CNN은 투자등급 채권과 정크본드 간의 수익률 격차(Spread)를 %로 제공함
+            try:
+                if 'junk_bond_demand' in data and 'data' in data['junk_bond_demand']:
+                    jb_data = data['junk_bond_demand']['data']
+                    curr_hy = float(jb_data[-1]['y'])
+                    prev_hy = float(jb_data[-2]['y']) if len(jb_data) > 1 else curr_hy
+                    hy_change = curr_hy - prev_hy
+                    hy_sign = "+" if hy_change > 0 else ""
+                    
+                    # 스프레드가 벌어지면 위험 회피(공포), 좁혀지면 위험 선호(탐욕)
+                    hy_status = "위험 회피 (공포)" if curr_hy > 3.0 else "위험 선호 (안정)" if curr_hy < 2.0 else "중립"
+                    fng_text_list.append(f"- 하이일드 스프레드: {curr_hy:.2f}% [{hy_status}] / 전일 대비 {hy_sign}{hy_change:.2f}%p")
+            except Exception as e:
+                fng_text_list.append("- 하이일드 스프레드: 데이터 파싱 오류")
+
         else:
-            fng_text = "- CNN 공포탐욕 지수: 데이터를 불러올 수 없습니다."
-            print(f"❌ 공포탐욕 지수 API 응답 오류 (상태 코드: {res.status_code})")
+            fng_text_list.append("- 시장 심리 지표: 데이터 응답 오류")
             
     except Exception as e:
-        print(f"❌ 공포탐욕 지수 가져오기 실패: {e}")
-        fng_text = "- CNN 공포탐욕 지수: 오류 발생"
-        
-    return fng_text
+        print(f"❌ 시장 심리 데이터 가져오기 실패: {e}")
+        fng_text_list.append("- 시장 심리 지표: 확인 불가")
+
+    final_text = "\n".join(fng_text_list)
+    print(f"✅ 시장 심리 확인 완료:\n{final_text}")
+    return final_text
 
 def get_market_indices():
     """S&P 500, 나스닥, 러셀 2000, VIX 지수를 가져오는 함수 (기존과 동일)"""
