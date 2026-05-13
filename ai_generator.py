@@ -55,6 +55,33 @@ def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_tr
                 print(f"❌ API 호출 에러 ({ticker}): {e}")
                 return {"score": 0, "newsScore": 0, "opinion": "AI 연동 실패", "keywords": "-"}
 
+def get_macro_ai_summary(score, pc_ratio, hy_spread):
+    """매크로 지표 3가지를 받아 Gemini AI에게 한 줄 요약을 요청하는 함수"""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return "💡 [AI 진단] 깃허브 시크릿에 GEMINI_API_KEY가 등록되지 않았습니다."
+
+    try:
+        genai.configure(api_key=api_key)
+        # 빠르고 가벼운 flash 모델 사용
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        너는 월스트리트의 수석 매크로 분석가야. 
+        아래 3가지 지표를 종합하여 현재 시장 참여자들의 '심리 상태'와 '리스크 선호도(방어적인지 공격적인지)'를 딱 한 줄(50자 이내)로 명확하고 전문적으로 요약해줘.
+        
+        1. CNN 공포탐욕 지수: {score}점 (0=극도의 공포, 100=극도의 탐욕)
+        2. 풋/콜 비율(P/C Ratio): {pc_ratio} (1.0 이상=하락 베팅 우세, 0.8 이하=상승 베팅 우세)
+        3. 하이일드 스프레드: {hy_spread}% (높을수록 위험 회피/신용 경색, 낮을수록 위험 선호)
+        
+        출력 예시: "💡 하락 베팅이 증가하고 신용 경색 우려가 커지는 극도의 위험 회피 장세입니다."
+        """
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"❌ AI 매크로 요약 에러: {e}")
+        return "💡 [AI 진단 실패] 시장 상태를 분석하는 데 문제가 발생했습니다."
+
 def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_text, us_date_str):
     """종합 리포트 생성 - AI의 날짜 오판을 방지하기 위해 강제 지침 강화"""
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
