@@ -1,6 +1,8 @@
 import feedparser
 import requests
 import yfinance as yf
+# [핵심] 분리된 AI 제너레이터 파일에서 매크로 요약 함수 불러오기
+from ai_generator import get_macro_ai_summary
 
 def get_stock_news(ticker, limit=3):
     """
@@ -82,8 +84,8 @@ def get_treasury_yields():
 import requests
 
 def get_fear_and_greed():
-    """CNN 실시간 공포탐욕 지수, 풋/콜 비율, 하이일드 스프레드를 가져오는 함수"""
-    print("시장 심리(공포탐욕, 풋콜, 스프레드) 데이터 가져오는 중...")
+    """CNN 실시간 지표 3개 수집 후, ai_generator를 통해 AI 요약을 추가하는 함수"""
+    print("시장 심리 및 AI 요약 데이터 가져오는 중...")
     fng_text_list = []
     
     try:
@@ -94,7 +96,12 @@ def get_fear_and_greed():
         if res.status_code == 200:
             data = res.json()
             
-            # 1. 메인 공포탐욕 지수
+            # AI에 넘겨줄 기본값 초기화
+            score = 50
+            curr_pc = 1.0
+            curr_hy = 2.0
+            
+            # 1. 메인 공포탐욕 지수 파싱
             score = round(data['fear_and_greed']['score']) 
             rating = data['fear_and_greed']['rating']      
             prev_close = round(data['fear_and_greed']['previous_close']) 
@@ -104,45 +111,37 @@ def get_fear_and_greed():
             sign = "+" if change > 0 else ""
             
             rating_ko = {
-                "extreme fear": "극도의 공포 😱",
-                "fear": "공포 😨",
-                "neutral": "중립 😐",
-                "greed": "탐욕 😎",
-                "extreme greed": "극도의 탐욕 🤑"
+                "extreme fear": "극도의 공포 😱", "fear": "공포 😨",
+                "neutral": "중립 😐", "greed": "탐욕 😎", "extreme greed": "극도의 탐욕 🤑"
             }.get(rating.lower(), rating) 
             
-            fng_text_list.append(f"- CNN 공포탐욕 지수: {score}점 ({rating_ko}) / 전일 대비 {sign}{change}점")
+            fng_text_list.append(f"- CNN 공포탐욕: {score}점 ({rating_ko}) / 전일비 {sign}{change}점")
 
-            # 2. 풋/콜 비율 (Put/Call Ratio)
-            try:
-                if 'put_call_options' in data and 'data' in data['put_call_options']:
-                    pc_data = data['put_call_options']['data']
-                    curr_pc = float(pc_data[-1]['y'])
-                    prev_pc = float(pc_data[-2]['y']) if len(pc_data) > 1 else curr_pc
-                    pc_change = curr_pc - prev_pc
-                    pc_sign = "+" if pc_change > 0 else ""
-                    
-                    # 1.0 이상이면 풋(하락) 베팅 우세, 0.8 이하면 콜(상승) 베팅 우세로 해석
-                    pc_status = "공포 (하락 베팅)" if curr_pc > 1.0 else "탐욕 (상승 베팅)" if curr_pc < 0.8 else "중립"
-                    fng_text_list.append(f"- 풋/콜 비율 (P/C Ratio): {curr_pc:.2f} [{pc_status}] / 전일 대비 {pc_sign}{pc_change:.2f}")
-            except Exception as e:
-                fng_text_list.append("- 풋/콜 비율: 데이터 파싱 오류")
+            # 2. 풋/콜 비율 (Put/Call Ratio) 파싱
+            if 'put_call_options' in data and 'data' in data['put_call_options']:
+                pc_data = data['put_call_options']['data']
+                curr_pc = float(pc_data[-1]['y'])
+                prev_pc = float(pc_data[-2]['y']) if len(pc_data) > 1 else curr_pc
+                pc_change = curr_pc - prev_pc
+                pc_sign = "+" if pc_change > 0 else ""
+                
+                pc_status = "공포 (하락 베팅)" if curr_pc > 1.0 else "탐욕 (상승 베팅)" if curr_pc < 0.8 else "중립"
+                fng_text_list.append(f"- 풋/콜 비율 (P/C Ratio): {curr_pc:.2f} [{pc_status}] / 전일비 {pc_sign}{pc_change:.2f}")
 
-            # 3. 하이일드 스프레드 (Junk Bond Demand)
-            # CNN은 투자등급 채권과 정크본드 간의 수익률 격차(Spread)를 %로 제공함
-            try:
-                if 'junk_bond_demand' in data and 'data' in data['junk_bond_demand']:
-                    jb_data = data['junk_bond_demand']['data']
-                    curr_hy = float(jb_data[-1]['y'])
-                    prev_hy = float(jb_data[-2]['y']) if len(jb_data) > 1 else curr_hy
-                    hy_change = curr_hy - prev_hy
-                    hy_sign = "+" if hy_change > 0 else ""
-                    
-                    # 스프레드가 벌어지면 위험 회피(공포), 좁혀지면 위험 선호(탐욕)
-                    hy_status = "위험 회피 (공포)" if curr_hy > 3.0 else "위험 선호 (안정)" if curr_hy < 2.0 else "중립"
-                    fng_text_list.append(f"- 하이일드 스프레드: {curr_hy:.2f}% [{hy_status}] / 전일 대비 {hy_sign}{hy_change:.2f}%p")
-            except Exception as e:
-                fng_text_list.append("- 하이일드 스프레드: 데이터 파싱 오류")
+            # 3. 하이일드 스프레드 (Junk Bond Demand) 파싱
+            if 'junk_bond_demand' in data and 'data' in data['junk_bond_demand']:
+                jb_data = data['junk_bond_demand']['data']
+                curr_hy = float(jb_data[-1]['y'])
+                prev_hy = float(jb_data[-2]['y']) if len(jb_data) > 1 else curr_hy
+                hy_change = curr_hy - prev_hy
+                hy_sign = "+" if hy_change > 0 else ""
+                
+                hy_status = "위험 회피" if curr_hy > 3.0 else "위험 선호" if curr_hy < 2.0 else "중립"
+                fng_text_list.append(f"- 하이일드 스프레드: {curr_hy:.2f}% [{hy_status}] / 전일비 {hy_sign}{hy_change:.2f}%p")
+
+            # 🌟 [AI 로직 분리] 외부 ai_generator.py 로 지표를 던져서 결과만 받아옴 🌟
+            ai_summary = get_macro_ai_summary(score, curr_pc, curr_hy)
+            fng_text_list.append(f"<br><strong style='color:#d35400;'>{ai_summary}</strong>")
 
         else:
             fng_text_list.append("- 시장 심리 지표: 데이터 응답 오류")
