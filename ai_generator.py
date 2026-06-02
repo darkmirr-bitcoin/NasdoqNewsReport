@@ -33,7 +33,7 @@ def get_gemini_scoring_analysis(client, ticker, price, rsi, volume_ratio, obv_tr
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-2.5-flash',
                 contents=prompt
             )
             
@@ -64,7 +64,7 @@ def get_macro_ai_summary(score, pc_ratio, hy_spread):
     try:
         genai.configure(api_key=api_key)
         # 빠르고 가벼운 flash 모델 사용
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = f"""
         너는 월스트리트의 수석 매크로 분석가야. 
@@ -130,7 +130,7 @@ def generate_reports(news_text, sheet_data_text, yield_text, fng_text, indices_t
     print(f"DEBUG: AI에게 전달되는 날짜 문자열 -> {us_date_str}")
     
     response = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-2.5-flash',
         contents=prompt
     )
     full_text = response.text.strip()
