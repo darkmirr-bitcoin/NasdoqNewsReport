@@ -33,7 +33,7 @@ if __name__ == "__main__":
     print("✅ 개장일 확인 완료! 리포트 생성을 시작합니다.")
 
     # 1. 글로벌 거시경제 데이터 수집
-    news_text = get_news(limit=80)
+    news_text = get_news(limit=20)
     yield_text = get_treasury_yields()
     fng_text = get_fear_and_greed()
     indices_text = get_market_indices()
